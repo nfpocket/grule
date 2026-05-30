@@ -1,98 +1,98 @@
 <script setup lang="ts">
-import { Chat } from "@ai-sdk/vue";
-import { DefaultChatTransport } from "ai";
-import type { UIMessage } from "ai";
-import type { ChatMessageRow, Citation } from "#shared/types";
+import { Chat } from '@ai-sdk/vue'
+import { DefaultChatTransport } from 'ai'
+import type { UIMessage } from 'ai'
+import type { ChatMessageRow, Citation } from '#shared/types'
 
 const props = defineProps<{
-  gameId: string;
-  ready: boolean;
-  initialMessages: ChatMessageRow[];
-}>();
-defineEmits<{ close: [] }>();
+  gameId: string
+  ready: boolean
+  initialMessages: ChatMessageRow[]
+}>()
+defineEmits<{ close: [] }>()
 
-const view = ref<"chat" | "pdf">("chat");
-const open = ref(false);
-const pdfPage = ref<number | null>(null);
+const view = ref<'chat' | 'pdf'>('chat')
+const open = ref(false)
+const pdfPage = ref<number | null>(null)
 const pdfSrc = computed(
   () =>
-    `/api/games/${props.gameId}/pdf${pdfPage.value ? `#page=${pdfPage.value}` : ""}`,
-);
+    `/api/games/${props.gameId}/pdf${pdfPage.value ? `#page=${pdfPage.value}` : ''}`
+)
 
 function openPage(page: number) {
-  pdfPage.value = page;
-  view.value = "pdf";
+  pdfPage.value = page
+  view.value = 'pdf'
 }
 
-const seeded = props.initialMessages.map((m) => ({
+const seeded = props.initialMessages.map(m => ({
   id: String(m.id),
   role: m.role,
   parts: [
-    { type: "text", text: m.content },
+    { type: 'text', text: m.content },
     ...(m.citations?.length
-      ? [{ type: "data-citations", data: m.citations }]
-      : []),
-  ],
-}));
+      ? [{ type: 'data-citations', data: m.citations }]
+      : [])
+  ]
+}))
 
 const chat = new Chat({
   transport: new DefaultChatTransport({
-    api: `/api/games/${props.gameId}/chat`,
+    api: `/api/games/${props.gameId}/chat`
   }),
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  messages: seeded as any,
-});
+  messages: seeded as any
+})
 
-const input = ref("");
+const input = ref('')
 const busy = computed(
-  () => chat.status === "submitted" || chat.status === "streaming",
-);
+  () => chat.status === 'submitted' || chat.status === 'streaming'
+)
 
 function send() {
-  const text = input.value.trim();
-  if (!text || busy.value) return;
-  chat.sendMessage({ text });
-  input.value = "";
+  const text = input.value.trim()
+  if (!text || busy.value) return
+  chat.sendMessage({ text })
+  input.value = ''
 }
 
 function textOf(message: UIMessage): string {
   return message.parts
-    .filter((p) => p.type === "text")
-    .map((p) => p.text)
-    .join("");
+    .filter(p => p.type === 'text')
+    .map(p => p.text)
+    .join('')
 }
 function citationsOf(message: UIMessage): Citation[] {
   return message.parts
-    .filter((p) => p.type === "data-citations")
-    .flatMap((p) => (p as { data?: Citation[] }).data || []);
+    .filter(p => p.type === 'data-citations')
+    .flatMap(p => (p as { data?: Citation[] }).data || [])
 }
 
-const scroller = ref<HTMLElement>();
+const scroller = ref<HTMLElement>()
 watch(
-  () => chat.messages.map((m) => textOf(m)).join(""),
+  () => chat.messages.map(m => textOf(m)).join(''),
   async () => {
-    await nextTick();
-    scroller.value?.scrollTo({ top: scroller.value.scrollHeight });
-  },
-);
+    await nextTick()
+    scroller.value?.scrollTo({ top: scroller.value.scrollHeight })
+  }
+)
 
 const suggestions = [
-  "How do I win?",
-  "What happens on my turn?",
-  "How is scoring calculated?",
-];
+  'How do I win?',
+  'What happens on my turn?',
+  'How is scoring calculated?'
+]
 </script>
 
 <template>
   <USlideover
-    :ui="{
-      content: 'lg:w-[33vw] lg:min-w-[500px] max-w-none',
-    }"
     v-model:open="open"
+    :ui="{
+      content: 'lg:w-[33vw] lg:min-w-[500px] max-w-none'
+    }"
     :overlay="false"
     :modal="false"
   >
-    <slot></slot>
+    <slot />
 
     <template #header>
       <div class="flex items-center justify-between gap-2 w-full">
@@ -156,7 +156,10 @@ const suggestions = [
         </div>
 
         <!-- Chat view -->
-        <div v-show="view === 'chat'" class="flex-1 min-h-0 flex flex-col">
+        <div
+          v-show="view === 'chat'"
+          class="flex-1 min-h-0 flex flex-col"
+        >
           <div
             v-if="!ready"
             class="flex-1 grid place-items-center text-sm text-muted p-4 text-center"
@@ -211,7 +214,10 @@ const suggestions = [
                     v-if="message.role === 'assistant'"
                     :source="textOf(message)"
                   />
-                  <p v-else class="whitespace-pre-wrap">
+                  <p
+                    v-else
+                    class="whitespace-pre-wrap"
+                  >
                     {{ textOf(message) }}
                   </p>
                   <div

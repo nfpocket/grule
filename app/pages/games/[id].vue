@@ -1,85 +1,93 @@
 <script setup lang="ts">
-import type { Game, IngestStep, ChatMessageRow } from "#shared/types";
+import type { Game, IngestStep, ChatMessageRow } from '#shared/types'
 
-const route = useRoute();
-const toast = useToast();
-const id = computed(() => route.params.id as string);
+const route = useRoute()
+const toast = useToast()
+const id = computed(() => route.params.id as string)
 
 const { data: game, refresh } = await useFetch<Game>(
-  () => `/api/games/${id.value}`,
-);
+  () => `/api/games/${id.value}`
+)
 // Loaded once here (shell persists across tabs) and seeded into the chat sidebar.
 const { data: history } = await useFetch<ChatMessageRow[]>(
-  () => `/api/games/${id.value}/messages`,
-);
+  () => `/api/games/${id.value}/messages`
+)
 
 // Share the game with the tab pages
-provide(GAME_KEY, game);
+provide(GAME_KEY, game)
 
 // Poll while processing
-let timer: ReturnType<typeof setInterval> | undefined;
+let timer: ReturnType<typeof setInterval> | undefined
 onMounted(() => {
   timer = setInterval(() => {
-    if (game.value?.status === "processing") refresh();
-  }, 2000);
-});
-onBeforeUnmount(() => clearInterval(timer));
+    if (game.value?.status === 'processing') refresh()
+  }, 2000)
+})
+onBeforeUnmount(() => clearInterval(timer))
 
 const tabs = computed(() => [
-  { label: "Overview", icon: "i-lucide-book-open", to: `/games/${id.value}` },
+  { label: 'Overview', icon: 'i-lucide-book-open', to: `/games/${id.value}` },
   {
-    label: "Setup",
-    icon: "i-lucide-list-checks",
-    to: `/games/${id.value}/setup`,
+    label: 'Setup',
+    icon: 'i-lucide-list-checks',
+    to: `/games/${id.value}/setup`
   },
-  { label: "Pieces", icon: "i-lucide-puzzle", to: `/games/${id.value}/pieces` },
-  { label: "PDF", icon: "i-lucide-file-text", to: `/games/${id.value}/pdf` },
-]);
-const isActive = (to: string) => route.path === to;
+  { label: 'Pieces', icon: 'i-lucide-puzzle', to: `/games/${id.value}/pieces` },
+  { label: 'PDF', icon: 'i-lucide-file-text', to: `/games/${id.value}/pdf` }
+])
+const isActive = (to: string) => route.path === to
 
 const stepUi: Record<
-  IngestStep["status"],
-  { icon: string; class: string; spin?: boolean }
+  IngestStep['status'],
+  { icon: string, class: string, spin?: boolean }
 > = {
-  done: { icon: "i-lucide-check-circle-2", class: "text-success" },
-  active: { icon: "i-lucide-loader-circle", class: "text-primary", spin: true },
-  error: { icon: "i-lucide-circle-x", class: "text-error" },
-  pending: { icon: "i-lucide-circle-dashed", class: "text-muted" },
-};
+  done: { icon: 'i-lucide-check-circle-2', class: 'text-success' },
+  active: { icon: 'i-lucide-loader-circle', class: 'text-primary', spin: true },
+  error: { icon: 'i-lucide-circle-x', class: 'text-error' },
+  pending: { icon: 'i-lucide-circle-dashed', class: 'text-muted' }
+}
 
-const reprocessing = ref(false);
+const reprocessing = ref(false)
 async function retry() {
-  reprocessing.value = true;
+  reprocessing.value = true
   try {
-    await $fetch(`/api/games/${id.value}/reprocess`, { method: "POST" });
-    await refresh();
+    await $fetch(`/api/games/${id.value}/reprocess`, { method: 'POST' })
+    await refresh()
     toast.add({
-      title: "Re-processing started",
-      description: "Resuming from where it left off…",
-      color: "success",
-    });
+      title: 'Re-processing started',
+      description: 'Resuming from where it left off…',
+      color: 'success'
+    })
   } catch (err: unknown) {
-    const msg =
-      err && typeof err === "object" && "statusMessage" in err
+    const msg
+      = err && typeof err === 'object' && 'statusMessage' in err
         ? String((err as { statusMessage: string }).statusMessage)
-        : String(err);
-    toast.add({ title: "Could not restart", description: msg, color: "error" });
+        : String(err)
+    toast.add({ title: 'Could not restart', description: msg, color: 'error' })
   } finally {
-    reprocessing.value = false;
+    reprocessing.value = false
   }
 }
 
-const initialMessages = computed(() => history.value || []);
+const initialMessages = computed(() => history.value || [])
 </script>
 
 <template>
   <UContainer class="py-6 space-y-6">
-    <div v-if="!game" class="text-muted">Loading…</div>
+    <div
+      v-if="!game"
+      class="text-muted"
+    >
+      Loading…
+    </div>
 
     <template v-else>
       <div>
         <div class="flex items-center gap-2 text-sm text-muted mb-1">
-          <NuxtLink to="/" class="hover:text-primary"> Library </NuxtLink>
+          <NuxtLink
+            to="/"
+            class="hover:text-primary"
+          > Library </NuxtLink>
           <span>/</span>
           <span>{{ game.title }}</span>
         </div>
@@ -87,13 +95,25 @@ const initialMessages = computed(() => history.value || []);
           {{ game.title }}
         </h1>
         <div class="flex flex-wrap gap-2 mt-2 text-xs">
-          <UBadge v-if="game.meta?.players" color="neutral" variant="soft">
+          <UBadge
+            v-if="game.meta?.players"
+            color="neutral"
+            variant="soft"
+          >
             <UIcon name="i-lucide-users" /> {{ game.meta.players }}
           </UBadge>
-          <UBadge v-if="game.meta?.playtime" color="neutral" variant="soft">
+          <UBadge
+            v-if="game.meta?.playtime"
+            color="neutral"
+            variant="soft"
+          >
             <UIcon name="i-lucide-clock" /> {{ game.meta.playtime }}
           </UBadge>
-          <UBadge v-if="game.meta?.ages" color="neutral" variant="soft">
+          <UBadge
+            v-if="game.meta?.ages"
+            color="neutral"
+            variant="soft"
+          >
             <UIcon name="i-lucide-baby" /> {{ game.meta.ages }}
           </UBadge>
         </div>
@@ -111,7 +131,11 @@ const initialMessages = computed(() => history.value || []);
               name="i-lucide-loader-circle"
               class="animate-spin text-primary"
             />
-            <UIcon v-else name="i-lucide-triangle-alert" class="text-error" />
+            <UIcon
+              v-else
+              name="i-lucide-triangle-alert"
+              class="text-error"
+            />
             <span>{{
               game.status === "processing"
                 ? "Processing rulebook…"
@@ -133,7 +157,10 @@ const initialMessages = computed(() => history.value || []);
           :model-value="game.progress"
           class="mb-4"
         />
-        <ol v-if="game.steps?.length" class="space-y-2">
+        <ol
+          v-if="game.steps?.length"
+          class="space-y-2"
+        >
           <li
             v-for="step in game.steps"
             :key="step.key"
@@ -144,7 +171,7 @@ const initialMessages = computed(() => history.value || []);
               :class="[
                 stepUi[step.status].class,
                 stepUi[step.status].spin ? 'animate-spin' : '',
-                'mt-0.5 shrink-0',
+                'mt-0.5 shrink-0'
               ]"
             />
             <div class="min-w-0">
@@ -155,10 +182,9 @@ const initialMessages = computed(() => history.value || []);
                 v-if="step.detail"
                 :class="[
                   'ml-2 text-xs',
-                  step.status === 'error' ? 'text-error' : 'text-muted',
+                  step.status === 'error' ? 'text-error' : 'text-muted'
                 ]"
-                >{{ step.detail }}</span
-              >
+              >{{ step.detail }}</span>
             </div>
           </li>
         </ol>
