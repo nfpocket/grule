@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(npm run *)",
+      "Bash(node -e \"const fs=require\\('fs'\\);const g=require\\('glob'\\);\")",
+      "Bash(NUXT_IGNORE_LOCK=1 npm run dev)",
+      "Bash(curl -s http://localhost:3000/api/games)",
+      "Bash(curl -s \"http://localhost:3000/api/providers/models?provider=openai\")",
+      "Bash(curl -s \"http://localhost:3000/api/providers/models?provider=anthropic\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3000/settings)",
+      "mcp__Claude_Preview__preview_start"
+    ]
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "name": "grule",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
+    "lint": "eslint .",
+    "typecheck": "nuxt typecheck"
+  },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.81",
+    "@ai-sdk/openai": "^3.0.67",
+    "@ai-sdk/openai-compatible": "^2.0.48",
+    "@ai-sdk/vue": "^3.0.193",
+    "@iconify-json/lucide": "^1.2.108",
+    "@iconify-json/simple-icons": "^1.2.83",
+    "@nuxt/ui": "^4.7.1",
+    "ai": "^6.0.193",
+    "better-sqlite3": "^12.10.0",
+    "marked": "^18.0.4",
+    "nuxt": "^4.4.6",
+    "sqlite-vec": "^0.1.9",
+    "tailwindcss": "^4.3.0",
+    "unpdf": "^1.6.2",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@nuxt/eslint": "^1.15.2",
+    "@tailwindcss/typography": "^0.5.19",
+    "@types/better-sqlite3": "^7.6.13",
+    "eslint": "^10.4.0",
+    "typescript": "^6.0.3",
+    "vue-tsc": "^3.3.0"
+  },
+  "packageManager": "pnpm@11.1.3"
+}
