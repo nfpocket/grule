@@ -1,0 +1,108 @@
+{
+  "nav": {
+    "library": "Library",
+    "settings": "Settings",
+    "overview": "Overview",
+    "setup": "Setup",
+    "pieces": "Pieces",
+    "pdf": "PDF"
+  },
+  "common": {
+    "loading": "Loading…",
+    "regenerate": "Regenerate",
+    "open": "Open",
+    "working": "Working…"
+  },
+  "status": {
+    "ready": "ready",
+    "processing": "processing",
+    "error": "error"
+  },
+  "index": {
+    "title": "Your games",
+    "subtitle": "Upload a rulebook PDF and let the AI break it down.",
+    "upload": "Upload rulebook (PDF)",
+    "empty": "No games yet. Upload your first rulebook to get started.",
+    "open": "Open",
+    "confirmDelete": "Delete \"{title}\" and all its data?",
+    "uploadStarted": "Upload started",
+    "uploadStartedDesc": "Analyzing the rulebook…",
+    "uploadFailed": "Upload failed"
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Choose which AI providers power analysis, chat and embeddings.",
+    "keysTitle": "API keys are read from environment variables",
+    "configured": "configured",
+    "missing": "{key} missing",
+    "chatModel": "Chat & analysis model",
+    "chatModelDesc": "Used for splitting the rulebook, generating setup/pieces, and answering questions.",
+    "provider": "Provider",
+    "model": "Model",
+    "modelHelp": "Pick a model (type to add a custom id)",
+    "testConnection": "Test connection",
+    "embeddingModel": "Embedding model",
+    "embeddingModelDesc": "Used for RAG vector search. Anthropic has no embeddings API — use OpenAI or LM Studio.",
+    "embeddingWarnTitle": "Changing the embedding model",
+    "embeddingWarnDesc": "Each game stores the embedding model used at ingestion. New settings apply to newly uploaded games; existing games keep their original embeddings.",
+    "save": "Save settings",
+    "saved": "Settings saved",
+    "saveFailed": "Save failed",
+    "testOk": "{kind} OK",
+    "testFailed": "{kind} failed",
+    "embeddingDim": "Embedding dim: {dim}",
+    "connectionSuccessful": "Connection successful",
+    "testError": "Test failed"
+  },
+  "game": {
+    "processing": "Processing rulebook…",
+    "processingFailed": "Processing failed",
+    "retry": "Retry (resume)",
+    "reprocessStarted": "Re-processing started",
+    "reprocessStartedDesc": "Resuming from where it left off…",
+    "reprocessFailed": "Could not restart",
+    "ask": "Ask"
+  },
+  "overview": {
+    "pending": "Sections will appear here once processing finishes.",
+    "empty": "No sections found."
+  },
+  "setup": {
+    "pending": "The setup guide is generated during processing.",
+    "title": "Initial setup",
+    "empty": "No setup steps available.",
+    "source": "Source: {ref}",
+    "regenerated": "Setup guide regenerated",
+    "regenerateFailed": "Failed to regenerate"
+  },
+  "pieces": {
+    "pending": "The component list is generated during processing.",
+    "title": "Game pieces",
+    "empty": "No components catalogued.",
+    "regenerated": "Pieces regenerated",
+    "regenerateFailed": "Failed to regenerate"
+  },
+  "pdfPage": {
+    "jumped": "Jumped to page {page} · ",
+    "description": "The original uploaded rulebook.",
+    "openNewTab": "Open in new tab"
+  },
+  "chat": {
+    "tabChat": "Chat",
+    "tabPdf": "PDF",
+    "clear": "Clear chat",
+    "close": "Close sidebar",
+    "page": "Page {page}",
+    "rulebook": "Rulebook",
+    "full": "Full",
+    "notReady": "Chat will be available once the rulebook has finished processing.",
+    "askAnything": "Ask anything about the rules.",
+    "placeholder": "Ask about the rules…",
+    "clearFailed": "Could not clear chat",
+    "suggestions": {
+      "win": "How do I win?",
+      "turn": "What happens on my turn?",
+      "scoring": "How is scoring calculated?"
+    }
+  }
+}

@@ -11,6 +11,8 @@ const props = defineProps<{
 }>()
 defineEmits<{ close: [] }>()
 
+const { t } = useI18n()
+
 const view = ref<'chat' | 'pdf'>('chat')
 const open = ref(false)
 const pdfPage = ref<number | null>(null)
@@ -62,7 +64,7 @@ async function clearChat() {
         ? String((err as { statusMessage: string }).statusMessage)
         : String(err)
     toast.add({
-      title: 'Could not clear chat',
+      title: t('chat.clearFailed'),
       description: msg,
       color: 'error'
     })
@@ -99,11 +101,11 @@ watch(
   }
 )
 
-const suggestions = [
-  'How do I win?',
-  'What happens on my turn?',
-  'How is scoring calculated?'
-]
+const suggestions = computed(() => [
+  t('chat.suggestions.win'),
+  t('chat.suggestions.turn'),
+  t('chat.suggestions.scoring')
+])
 </script>
 
 <template>
@@ -127,7 +129,7 @@ const suggestions = [
             size="xs"
             @click="view = 'chat'"
           >
-            Chat
+            {{ t('chat.tabChat') }}
           </UButton>
           <UButton
             :color="view === 'pdf' ? 'primary' : 'neutral'"
@@ -136,7 +138,7 @@ const suggestions = [
             size="xs"
             @click="view = 'pdf'"
           >
-            PDF
+            {{ t('chat.tabPdf') }}
           </UButton>
         </div>
         <div class="flex items-center gap-1">
@@ -147,14 +149,14 @@ const suggestions = [
             variant="ghost"
             size="xs"
             :loading="clearing"
-            aria-label="Clear chat"
+            :aria-label="t('chat.clear')"
             @click="clearChat"
           />
           <UButton
             icon="i-lucide-panel-right-close"
             color="neutral"
             variant="ghost"
-            aria-label="Close sidebar"
+            :aria-label="t('chat.close')"
             @click="open = false"
           />
         </div>
@@ -171,7 +173,7 @@ const suggestions = [
           <div
             class="flex items-center justify-between px-3 py-1.5 text-xs text-muted border-b border-default"
           >
-            <span>{{ pdfPage ? `Page ${pdfPage}` : "Rulebook" }}</span>
+            <span>{{ pdfPage ? t('chat.page', { page: pdfPage }) : t('chat.rulebook') }}</span>
             <UButton
               :to="`/games/${gameId}/pdf${pdfPage ? `?page=${pdfPage}` : ''}`"
               icon="i-lucide-maximize-2"
@@ -179,7 +181,7 @@ const suggestions = [
               variant="ghost"
               color="neutral"
             >
-              Full
+              {{ t('chat.full') }}
             </UButton>
           </div>
           <iframe
@@ -199,7 +201,7 @@ const suggestions = [
             v-if="!ready"
             class="flex-1 grid place-items-center text-sm text-muted p-4 text-center"
           >
-            Chat will be available once the rulebook has finished processing.
+            {{ t('chat.notReady') }}
           </div>
           <template v-else>
             <div
@@ -210,7 +212,7 @@ const suggestions = [
                 v-if="!chat.messages.length"
                 class="text-center text-muted text-sm py-6 space-y-3"
               >
-                <p>Ask anything about the rules.</p>
+                <p>{{ t('chat.askAnything') }}</p>
                 <div class="flex flex-col gap-2">
                   <UButton
                     v-for="s in suggestions"
@@ -268,7 +270,7 @@ const suggestions = [
                       icon="i-lucide-file-text"
                       @click="c.page && openPage(c.page)"
                     >
-                      {{ c.page ? `Page ${c.page}` : c.title }}
+                      {{ c.page ? t('chat.page', { page: c.page }) : c.title }}
                     </UButton>
                   </div>
                 </div>
@@ -279,7 +281,7 @@ const suggestions = [
               <div class="flex gap-2">
                 <UInput
                   v-model="input"
-                  placeholder="Ask about the rules…"
+                  :placeholder="t('chat.placeholder')"
                   class="flex-1"
                   :disabled="busy"
                   @keydown.enter="send"

@@ -5,6 +5,7 @@ const route = useRoute()
 const id = route.params.id as string
 const toast = useToast()
 const { ready } = useGameContext()
+const { t } = useI18n()
 
 const { data: pieces, refresh } = await useFetch<Piece[]>(() => `/api/games/${id}/pieces`)
 const regenerating = ref(false)
@@ -14,9 +15,9 @@ async function regenerate() {
   try {
     await $fetch(`/api/games/${id}/pieces`, { method: 'POST' })
     await refresh()
-    toast.add({ title: 'Pieces regenerated', color: 'success' })
+    toast.add({ title: t('pieces.regenerated'), color: 'success' })
   } catch (err: unknown) {
-    toast.add({ title: 'Failed to regenerate', description: err instanceof Error ? err.message : String(err), color: 'error' })
+    toast.add({ title: t('pieces.regenerateFailed'), description: err instanceof Error ? err.message : String(err), color: 'error' })
   } finally {
     regenerating.value = false
   }
@@ -28,7 +29,7 @@ async function regenerate() {
     v-if="!ready"
     class="text-muted"
   >
-    The component list is generated during processing.
+    {{ t('pieces.pending') }}
   </div>
   <div
     v-else
@@ -36,7 +37,7 @@ async function regenerate() {
   >
     <div class="flex items-center justify-between">
       <h2 class="text-xl font-semibold">
-        Game pieces
+        {{ t('pieces.title') }}
       </h2>
       <UButton
         icon="i-lucide-refresh-cw"
@@ -45,7 +46,7 @@ async function regenerate() {
         :loading="regenerating"
         @click="regenerate"
       >
-        Regenerate
+        {{ t('common.regenerate') }}
       </UButton>
     </div>
 
@@ -53,7 +54,7 @@ async function regenerate() {
       v-if="!pieces?.length"
       class="text-muted"
     >
-      No components catalogued.
+      {{ t('pieces.empty') }}
     </div>
 
     <div

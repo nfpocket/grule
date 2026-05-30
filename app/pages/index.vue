@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { Game } from '#shared/types'
 
+const { t } = useI18n()
 const toast = useToast()
 const { data: games, refresh } = await useFetch<Game[]>('/api/games')
 
@@ -20,10 +21,10 @@ async function onFile(e: Event) {
     const form = new FormData()
     form.append('file', file)
     await $fetch('/api/games', { method: 'POST', body: form })
-    toast.add({ title: 'Upload started', description: 'Analyzing the rulebook…', color: 'success' })
+    toast.add({ title: t('index.uploadStarted'), description: t('index.uploadStartedDesc'), color: 'success' })
     await refresh()
   } catch (err: unknown) {
-    toast.add({ title: 'Upload failed', description: errMsg(err), color: 'error' })
+    toast.add({ title: t('index.uploadFailed'), description: errMsg(err), color: 'error' })
   } finally {
     uploading.value = false
     input.value = ''
@@ -31,7 +32,7 @@ async function onFile(e: Event) {
 }
 
 async function remove(game: Game) {
-  if (!confirm(`Delete "${game.title}" and all its data?`)) return
+  if (!confirm(t('index.confirmDelete', { title: game.title }))) return
   await $fetch(`/api/games/${game.id}`, { method: 'DELETE' })
   await refresh()
 }
@@ -58,10 +59,10 @@ onBeforeUnmount(() => clearInterval(timer))
     <div class="flex items-end justify-between gap-4 flex-wrap">
       <div>
         <h1 class="text-2xl font-bold">
-          Your games
+          {{ t('index.title') }}
         </h1>
         <p class="text-muted">
-          Upload a rulebook PDF and let the AI break it down.
+          {{ t('index.subtitle') }}
         </p>
       </div>
       <div>
@@ -78,7 +79,7 @@ onBeforeUnmount(() => clearInterval(timer))
           size="lg"
           @click="pickFile"
         >
-          Upload rulebook (PDF)
+          {{ t('index.upload') }}
         </UButton>
       </div>
     </div>
@@ -92,7 +93,7 @@ onBeforeUnmount(() => clearInterval(timer))
         class="size-10 text-muted mx-auto mb-3"
       />
       <p class="text-muted">
-        No games yet. Upload your first rulebook to get started.
+        {{ t('index.empty') }}
       </p>
     </div>
 
@@ -125,7 +126,7 @@ onBeforeUnmount(() => clearInterval(timer))
             variant="subtle"
             class="shrink-0"
           >
-            {{ game.status }}
+            {{ t(`status.${game.status}`) }}
           </UBadge>
         </div>
 
@@ -134,7 +135,7 @@ onBeforeUnmount(() => clearInterval(timer))
           class="mt-4"
         >
           <p class="text-sm text-muted mb-1">
-            {{ game.stage || 'Working…' }}
+            {{ game.stage || t('common.working') }}
           </p>
           <UProgress :model-value="game.progress" />
         </div>
@@ -175,7 +176,7 @@ onBeforeUnmount(() => clearInterval(timer))
               trailing-icon="i-lucide-arrow-right"
               size="sm"
             >
-              Open
+              {{ t('index.open') }}
             </UButton>
             <UButton
               icon="i-lucide-trash-2"

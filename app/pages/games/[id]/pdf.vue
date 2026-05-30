@@ -1,6 +1,7 @@
 <script setup lang="ts">
 const route = useRoute()
 const id = route.params.id as string
+const { t } = useI18n()
 
 // A `?page=N` query (e.g. from a chat citation) jumps the viewer to that page.
 const page = computed(() => (route.query.page ? Number(route.query.page) : null))
@@ -11,7 +12,7 @@ const src = computed(() => `/api/games/${id}/pdf${page.value ? `#page=${page.val
   <div class="space-y-2">
     <div class="flex items-center justify-between">
       <p class="text-sm text-muted">
-        <span v-if="page">Jumped to page {{ page }} · </span>The original uploaded rulebook.
+        <span v-if="page">{{ t('pdfPage.jumped', { page }) }}</span>{{ t('pdfPage.description') }}
       </p>
       <UButton
         :to="`/api/games/${id}/pdf`"
@@ -21,7 +22,7 @@ const src = computed(() => `/api/games/${id}/pdf${page.value ? `#page=${page.val
         variant="ghost"
         color="neutral"
       >
-        Open in new tab
+        {{ t('pdfPage.openNewTab') }}
       </UButton>
     </div>
     <iframe

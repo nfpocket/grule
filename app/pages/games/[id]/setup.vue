@@ -5,6 +5,7 @@ const route = useRoute()
 const id = route.params.id as string
 const toast = useToast()
 const { ready } = useGameContext()
+const { t } = useI18n()
 
 const { data: steps, refresh } = await useFetch<SetupStep[]>(() => `/api/games/${id}/setup`)
 const regenerating = ref(false)
@@ -14,9 +15,9 @@ async function regenerate() {
   try {
     await $fetch(`/api/games/${id}/setup`, { method: 'POST' })
     await refresh()
-    toast.add({ title: 'Setup guide regenerated', color: 'success' })
+    toast.add({ title: t('setup.regenerated'), color: 'success' })
   } catch (err: unknown) {
-    toast.add({ title: 'Failed to regenerate', description: err instanceof Error ? err.message : String(err), color: 'error' })
+    toast.add({ title: t('setup.regenerateFailed'), description: err instanceof Error ? err.message : String(err), color: 'error' })
   } finally {
     regenerating.value = false
   }
@@ -28,7 +29,7 @@ async function regenerate() {
     v-if="!ready"
     class="text-muted"
   >
-    The setup guide is generated during processing.
+    {{ t('setup.pending') }}
   </div>
   <div
     v-else
@@ -36,7 +37,7 @@ async function regenerate() {
   >
     <div class="flex items-center justify-between">
       <h2 class="text-xl font-semibold">
-        Initial setup
+        {{ t('setup.title') }}
       </h2>
       <UButton
         icon="i-lucide-refresh-cw"
@@ -45,7 +46,7 @@ async function regenerate() {
         :loading="regenerating"
         @click="regenerate"
       >
-        Regenerate
+        {{ t('common.regenerate') }}
       </UButton>
     </div>
 
@@ -53,7 +54,7 @@ async function regenerate() {
       v-if="!steps?.length"
       class="text-muted"
     >
-      No setup steps available.
+      {{ t('setup.empty') }}
     </div>
 
     <ol
@@ -78,7 +79,7 @@ async function regenerate() {
                 v-if="step.sectionRef"
                 class="text-xs text-muted mt-2"
               >
-                Source: {{ step.sectionRef }}
+                {{ t('setup.source', { ref: step.sectionRef }) }}
               </p>
             </div>
           </div>

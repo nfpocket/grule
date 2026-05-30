@@ -7,6 +7,7 @@ interface SettingsResponse {
   lmstudioBaseUrl: string
 }
 
+const { t } = useI18n()
 const toast = useToast()
 const { data } = await useFetch<SettingsResponse>('/api/settings')
 
@@ -114,9 +115,9 @@ async function save() {
   saving.value = true
   try {
     await $fetch('/api/settings', { method: 'POST', body: form })
-    toast.add({ title: 'Settings saved', color: 'success' })
+    toast.add({ title: t('settings.saved'), color: 'success' })
   } catch (err: unknown) {
-    toast.add({ title: 'Save failed', description: errMsg(err), color: 'error' })
+    toast.add({ title: t('settings.saveFailed'), description: errMsg(err), color: 'error' })
   } finally {
     saving.value = false
   }
@@ -131,12 +132,12 @@ async function test(kind: 'chat' | 'embedding') {
       body: { kind, provider: form[kind].provider, model: form[kind].model }
     })
     if (res.ok) {
-      toast.add({ title: `${kind} OK`, description: res.dim ? `Embedding dim: ${res.dim}` : 'Connection successful', color: 'success' })
+      toast.add({ title: t('settings.testOk', { kind }), description: res.dim ? t('settings.embeddingDim', { dim: res.dim }) : t('settings.connectionSuccessful'), color: 'success' })
     } else {
-      toast.add({ title: `${kind} failed`, description: res.error, color: 'error' })
+      toast.add({ title: t('settings.testFailed', { kind }), description: res.error, color: 'error' })
     }
   } catch (err: unknown) {
-    toast.add({ title: 'Test failed', description: errMsg(err), color: 'error' })
+    toast.add({ title: t('settings.testError'), description: errMsg(err), color: 'error' })
   } finally {
     testing[kind] = false
   }
@@ -152,10 +153,10 @@ function errMsg(err: unknown): string {
   <UContainer class="py-8 max-w-2xl space-y-6">
     <div>
       <h1 class="text-2xl font-bold">
-        Settings
+        {{ t('settings.title') }}
       </h1>
       <p class="text-muted">
-        Choose which AI providers power analysis, chat and embeddings.
+        {{ t('settings.subtitle') }}
       </p>
     </div>
 
@@ -164,7 +165,7 @@ function errMsg(err: unknown): string {
       color="neutral"
       variant="soft"
       icon="i-lucide-key-round"
-      title="API keys are read from environment variables"
+      :title="t('settings.keysTitle')"
     >
       <template #description>
         <ul class="text-sm mt-1 space-y-0.5">
@@ -174,7 +175,7 @@ function errMsg(err: unknown): string {
               variant="subtle"
               size="sm"
             >
-              {{ data.configured.openai ? 'configured' : 'NUXT_OPENAI_API_KEY missing' }}
+              {{ data.configured.openai ? t('settings.configured') : t('settings.missing', { key: 'NUXT_OPENAI_API_KEY' }) }}
             </UBadge>
           </li>
           <li>
@@ -183,7 +184,7 @@ function errMsg(err: unknown): string {
               variant="subtle"
               size="sm"
             >
-              {{ data.configured.anthropic ? 'configured' : 'NUXT_ANTHROPIC_API_KEY missing' }}
+              {{ data.configured.anthropic ? t('settings.configured') : t('settings.missing', { key: 'NUXT_ANTHROPIC_API_KEY' }) }}
             </UBadge>
           </li>
           <li>
@@ -202,14 +203,14 @@ function errMsg(err: unknown): string {
     <UCard>
       <template #header>
         <h2 class="font-semibold">
-          Chat & analysis model
+          {{ t('settings.chatModel') }}
         </h2>
         <p class="text-sm text-muted">
-          Used for splitting the rulebook, generating setup/pieces, and answering questions.
+          {{ t('settings.chatModelDesc') }}
         </p>
       </template>
       <div class="space-y-4">
-        <UFormField label="Provider">
+        <UFormField :label="t('settings.provider')">
           <USelect
             v-model="form.chat.provider"
             :items="chatProviders"
@@ -217,8 +218,8 @@ function errMsg(err: unknown): string {
           />
         </UFormField>
         <UFormField
-          label="Model"
-          help="Pick a model (type to add a custom id)"
+          :label="t('settings.model')"
+          :help="t('settings.modelHelp')"
         >
           <USelectMenu
             v-model="form.chat.model"
@@ -236,7 +237,7 @@ function errMsg(err: unknown): string {
           :loading="testing.chat"
           @click="test('chat')"
         >
-          Test connection
+          {{ t('settings.testConnection') }}
         </UButton>
       </div>
     </UCard>
@@ -244,14 +245,14 @@ function errMsg(err: unknown): string {
     <UCard>
       <template #header>
         <h2 class="font-semibold">
-          Embedding model
+          {{ t('settings.embeddingModel') }}
         </h2>
         <p class="text-sm text-muted">
-          Used for RAG vector search. Anthropic has no embeddings API — use OpenAI or LM Studio.
+          {{ t('settings.embeddingModelDesc') }}
         </p>
       </template>
       <div class="space-y-4">
-        <UFormField label="Provider">
+        <UFormField :label="t('settings.provider')">
           <USelect
             v-model="form.embedding.provider"
             :items="embeddingProviders"
@@ -259,8 +260,8 @@ function errMsg(err: unknown): string {
           />
         </UFormField>
         <UFormField
-          label="Model"
-          help="Pick a model (type to add a custom id)"
+          :label="t('settings.model')"
+          :help="t('settings.modelHelp')"
         >
           <USelectMenu
             v-model="form.embedding.model"
@@ -278,7 +279,7 @@ function errMsg(err: unknown): string {
           :loading="testing.embedding"
           @click="test('embedding')"
         >
-          Test connection
+          {{ t('settings.testConnection') }}
         </UButton>
       </div>
     </UCard>
@@ -287,8 +288,8 @@ function errMsg(err: unknown): string {
       color="warning"
       variant="soft"
       icon="i-lucide-info"
-      title="Changing the embedding model"
-      description="Each game stores the embedding model used at ingestion. New settings apply to newly uploaded games; existing games keep their original embeddings."
+      :title="t('settings.embeddingWarnTitle')"
+      :description="t('settings.embeddingWarnDesc')"
     />
 
     <div class="flex justify-end">
@@ -298,7 +299,7 @@ function errMsg(err: unknown): string {
         :loading="saving"
         @click="save"
       >
-        Save settings
+        {{ t('settings.save') }}
       </UButton>
     </div>
   </UContainer>

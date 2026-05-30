@@ -3,6 +3,7 @@ import type { Game, IngestStep, ChatMessageRow, Section } from '#shared/types'
 
 const route = useRoute()
 const toast = useToast()
+const { t } = useI18n()
 const id = computed(() => route.params.id as string)
 
 const { data: game, refresh } = await useFetch<Game>(
@@ -46,7 +47,7 @@ const activeSection = computed(() => {
 
 const navItems = computed(() => [
   {
-    label: 'Overview',
+    label: t('nav.overview'),
     icon: 'i-lucide-book-open',
     to: base.value,
     active: onOverview.value,
@@ -58,19 +59,19 @@ const navItems = computed(() => [
     }))
   },
   {
-    label: 'Setup',
+    label: t('nav.setup'),
     icon: 'i-lucide-list-checks',
     to: `${base.value}/setup`,
     active: isActive(`${base.value}/setup`)
   },
   {
-    label: 'Pieces',
+    label: t('nav.pieces'),
     icon: 'i-lucide-puzzle',
     to: `${base.value}/pieces`,
     active: isActive(`${base.value}/pieces`)
   },
   {
-    label: 'PDF',
+    label: t('nav.pdf'),
     icon: 'i-lucide-file-text',
     to: `${base.value}/pdf`,
     active: isActive(`${base.value}/pdf`)
@@ -104,8 +105,8 @@ async function retry() {
     await $fetch(`/api/games/${id.value}/reprocess`, { method: 'POST' })
     await refresh()
     toast.add({
-      title: 'Re-processing started',
-      description: 'Resuming from where it left off…',
+      title: t('game.reprocessStarted'),
+      description: t('game.reprocessStartedDesc'),
       color: 'success'
     })
   } catch (err: unknown) {
@@ -113,7 +114,7 @@ async function retry() {
       = err && typeof err === 'object' && 'statusMessage' in err
         ? String((err as { statusMessage: string }).statusMessage)
         : String(err)
-    toast.add({ title: 'Could not restart', description: msg, color: 'error' })
+    toast.add({ title: t('game.reprocessFailed'), description: msg, color: 'error' })
   } finally {
     reprocessing.value = false
   }
@@ -128,7 +129,7 @@ const initialMessages = computed(() => history.value || [])
       v-if="!game"
       class="text-muted"
     >
-      Loading…
+      {{ t('common.loading') }}
     </div>
 
     <template v-else>
@@ -138,7 +139,7 @@ const initialMessages = computed(() => history.value || [])
           <NuxtLink
             to="/"
             class="hover:text-primary"
-          > Library </NuxtLink>
+          > {{ t('nav.library') }} </NuxtLink>
           <span>/</span>
           <span>{{ game.title }}</span>
         </div>
@@ -207,8 +208,8 @@ const initialMessages = computed(() => history.value || [])
               />
               <span>{{
                 game.status === "processing"
-                  ? "Processing rulebook…"
-                  : "Processing failed"
+                  ? t('game.processing')
+                  : t('game.processingFailed')
               }}</span>
             </div>
             <UButton
@@ -218,7 +219,7 @@ const initialMessages = computed(() => history.value || [])
               size="sm"
               @click="retry"
             >
-              Retry (resume)
+              {{ t('game.retry') }}
             </UButton>
           </div>
           <UProgress
@@ -271,7 +272,7 @@ const initialMessages = computed(() => history.value || [])
             variant="soft"
             class="fixed bottom-4 right-4"
           >
-            Ask
+            {{ t('game.ask') }}
           </UButton>
         </GameChatSidebar>
 

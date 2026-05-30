@@ -1,8 +1,12 @@
 <script setup lang="ts">
+import { en, de } from '@nuxt/ui/locale'
+
+const { t, locale, setLocale } = useI18n()
+
 useHead({
   meta: [{ name: 'viewport', content: 'width=device-width, initial-scale=1' }],
   link: [{ rel: 'icon', href: '/favicon.ico' }],
-  htmlAttrs: { lang: 'en' }
+  htmlAttrs: { lang: locale }
 })
 
 useSeoMeta({
@@ -33,14 +37,22 @@ useSeoMeta({
           icon="i-lucide-library"
           color="neutral"
           variant="ghost"
-          label="Library"
+          :label="t('nav.library')"
         />
         <UButton
           to="/settings"
           icon="i-lucide-settings"
           color="neutral"
           variant="ghost"
-          label="Settings"
+          :label="t('nav.settings')"
+        />
+        <ULocaleSelect
+          :model-value="locale"
+          :locales="[en, de]"
+          variant="ghost"
+          color="neutral"
+          class="w-36"
+          @update:model-value="setLocale($event)"
         />
         <UColorModeButton />
       </template>

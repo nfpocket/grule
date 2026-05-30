@@ -1,0 +1,108 @@
+{
+  "nav": {
+    "library": "Bibliothek",
+    "settings": "Einstellungen",
+    "overview": "Übersicht",
+    "setup": "Aufbau",
+    "pieces": "Teile",
+    "pdf": "PDF"
+  },
+  "common": {
+    "loading": "Wird geladen…",
+    "regenerate": "Neu generieren",
+    "open": "Öffnen",
+    "working": "Arbeitet…"
+  },
+  "status": {
+    "ready": "bereit",
+    "processing": "in Bearbeitung",
+    "error": "Fehler"
+  },
+  "index": {
+    "title": "Deine Spiele",
+    "subtitle": "Lade eine Spielregel-PDF hoch und lass sie von der KI aufschlüsseln.",
+    "upload": "Spielregel hochladen (PDF)",
+    "empty": "Noch keine Spiele. Lade deine erste Spielregel hoch, um zu beginnen.",
+    "open": "Öffnen",
+    "confirmDelete": "„{title}“ und alle zugehörigen Daten löschen?",
+    "uploadStarted": "Upload gestartet",
+    "uploadStartedDesc": "Die Spielregel wird analysiert…",
+    "uploadFailed": "Upload fehlgeschlagen"
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "subtitle": "Wähle, welche KI-Anbieter Analyse, Chat und Embeddings antreiben.",
+    "keysTitle": "API-Schlüssel werden aus Umgebungsvariablen gelesen",
+    "configured": "konfiguriert",
+    "missing": "{key} fehlt",
+    "chatModel": "Chat- & Analysemodell",
+    "chatModelDesc": "Wird verwendet, um die Spielregel aufzuteilen, Aufbau/Teile zu generieren und Fragen zu beantworten.",
+    "provider": "Anbieter",
+    "model": "Modell",
+    "modelHelp": "Wähle ein Modell (tippe, um eine eigene ID hinzuzufügen)",
+    "testConnection": "Verbindung testen",
+    "embeddingModel": "Embedding-Modell",
+    "embeddingModelDesc": "Wird für die RAG-Vektorsuche verwendet. Anthropic hat keine Embeddings-API — nutze OpenAI oder LM Studio.",
+    "embeddingWarnTitle": "Embedding-Modell ändern",
+    "embeddingWarnDesc": "Jedes Spiel speichert das beim Import verwendete Embedding-Modell. Neue Einstellungen gelten für neu hochgeladene Spiele; bestehende Spiele behalten ihre ursprünglichen Embeddings.",
+    "save": "Einstellungen speichern",
+    "saved": "Einstellungen gespeichert",
+    "saveFailed": "Speichern fehlgeschlagen",
+    "testOk": "{kind} OK",
+    "testFailed": "{kind} fehlgeschlagen",
+    "embeddingDim": "Embedding-Dimension: {dim}",
+    "connectionSuccessful": "Verbindung erfolgreich",
+    "testError": "Test fehlgeschlagen"
+  },
+  "game": {
+    "processing": "Spielregel wird verarbeitet…",
+    "processingFailed": "Verarbeitung fehlgeschlagen",
+    "retry": "Erneut versuchen (fortsetzen)",
+    "reprocessStarted": "Neuverarbeitung gestartet",
+    "reprocessStartedDesc": "Wird dort fortgesetzt, wo es aufgehört hat…",
+    "reprocessFailed": "Neustart nicht möglich",
+    "ask": "Fragen"
+  },
+  "overview": {
+    "pending": "Abschnitte erscheinen hier, sobald die Verarbeitung abgeschlossen ist.",
+    "empty": "Keine Abschnitte gefunden."
+  },
+  "setup": {
+    "pending": "Die Aufbauanleitung wird während der Verarbeitung generiert.",
+    "title": "Erster Aufbau",
+    "empty": "Keine Aufbauschritte verfügbar.",
+    "source": "Quelle: {ref}",
+    "regenerated": "Aufbauanleitung neu generiert",
+    "regenerateFailed": "Neu generieren fehlgeschlagen"
+  },
+  "pieces": {
+    "pending": "Die Teileliste wird während der Verarbeitung generiert.",
+    "title": "Spielteile",
+    "empty": "Keine Komponenten katalogisiert.",
+    "regenerated": "Teile neu generiert",
+    "regenerateFailed": "Neu generieren fehlgeschlagen"
+  },
+  "pdfPage": {
+    "jumped": "Zu Seite {page} gesprungen · ",
+    "description": "Die ursprünglich hochgeladene Spielregel.",
+    "openNewTab": "In neuem Tab öffnen"
+  },
+  "chat": {
+    "tabChat": "Chat",
+    "tabPdf": "PDF",
+    "clear": "Chat leeren",
+    "close": "Seitenleiste schließen",
+    "page": "Seite {page}",
+    "rulebook": "Spielregel",
+    "full": "Vollbild",
+    "notReady": "Der Chat ist verfügbar, sobald die Spielregel fertig verarbeitet wurde.",
+    "askAnything": "Frage alles zu den Regeln.",
+    "placeholder": "Frage zu den Regeln…",
+    "clearFailed": "Chat konnte nicht geleert werden",
+    "suggestions": {
+      "win": "Wie gewinne ich?",
+      "turn": "Was passiert in meinem Zug?",
+      "scoring": "Wie wird die Punktzahl berechnet?"
+    }
+  }
+}
