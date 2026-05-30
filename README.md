@@ -117,12 +117,20 @@ model (for RAG search).
      live in the UI. Progress is polled via `GET /api/games/:id`.
 3. **Chat** (`POST /api/games/:id/chat`): embeds the question, vector-searches
    the game's chunks, and streams a grounded answer that **cites page numbers**.
-   History is persisted; citation chips link into the PDF viewer at that page.
+   History is persisted.
+
+### Chat sidebar
+Chat lives in a **persistent right-hand sidebar** (not a tab), so you can ask
+questions without leaving the Overview/Setup/Pieces tab you're on. The game shell
+is a nested-route parent (`app/pages/games/[id].vue`) that stays mounted while the
+tab content (`<NuxtPage>`) swaps, so the conversation survives tab switches. The
+sidebar can also **show the PDF inline** — clicking a page citation flips it to
+the PDF at that page, so you never lose your place in the main view.
 
 ### Viewing the PDF
-The original upload is served at `GET /api/games/:id/pdf` and embedded in the
-**PDF** tab. Chat citations link to `…/pdf?page=N`, which jumps the viewer to
-that page.
+The original upload is served at `GET /api/games/:id/pdf`, viewable inline in the
+chat sidebar and full-screen in the **PDF** tab. Page references use the
+`#page=N` fragment to jump the browser's PDF viewer to that page.
 
 ### Resuming a failed run
 If ingestion fails partway (e.g. a provider rate-limit), the game shows the

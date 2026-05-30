@@ -8,29 +8,27 @@ const src = computed(() => `/api/games/${id}/pdf${page.value ? `#page=${page.val
 </script>
 
 <template>
-  <GameShell>
-    <div class="space-y-2">
-      <div class="flex items-center justify-between">
-        <p class="text-sm text-muted">
-          <span v-if="page">Jumped to page {{ page }} · </span>The original uploaded rulebook.
-        </p>
-        <UButton
-          :to="`/api/games/${id}/pdf`"
-          target="_blank"
-          icon="i-lucide-external-link"
-          size="xs"
-          variant="ghost"
-          color="neutral"
-        >
-          Open in new tab
-        </UButton>
-      </div>
-      <iframe
-        :key="src"
-        :src="src"
-        class="w-full h-[calc(100vh-20rem)] min-h-120 rounded-lg border border-default bg-white"
-        title="Rulebook PDF"
-      />
+  <div class="space-y-2">
+    <div class="flex items-center justify-between">
+      <p class="text-sm text-muted">
+        <span v-if="page">Jumped to page {{ page }} · </span>The original uploaded rulebook.
+      </p>
+      <UButton
+        :to="`/api/games/${id}/pdf`"
+        target="_blank"
+        icon="i-lucide-external-link"
+        size="xs"
+        variant="ghost"
+        color="neutral"
+      >
+        Open in new tab
+      </UButton>
     </div>
-  </GameShell>
+    <iframe
+      :key="src"
+      :src="src"
+      class="w-full h-[calc(100vh-22rem)] min-h-120 rounded-lg border border-default bg-white"
+      title="Rulebook PDF"
+    />
+  </div>
 </template>

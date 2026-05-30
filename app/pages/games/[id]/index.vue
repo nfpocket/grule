@@ -3,6 +3,7 @@ import type { Section } from '#shared/types'
 
 const route = useRoute()
 const id = route.params.id as string
+const { ready } = useGameContext()
 
 const { data: sections } = await useFetch<Section[]>(() => `/api/games/${id}/sections`)
 const selected = ref<string | null>(null)
@@ -21,38 +22,36 @@ const current = computed(() => sections.value?.find(s => s.id === selected.value
 </script>
 
 <template>
-  <GameShell v-slot="{ ready }">
-    <div
-      v-if="!ready"
-      class="text-muted"
-    >
-      Sections will appear here once processing finishes.
-    </div>
-    <div
-      v-else-if="!sections?.length"
-      class="text-muted"
-    >
-      No sections found.
-    </div>
-    <div
-      v-else
-      class="grid md:grid-cols-[260px_1fr] gap-6"
-    >
-      <nav class="space-y-1">
-        <UButton
-          v-for="s in sections"
-          :key="s.id"
-          :color="selected === s.id ? 'primary' : 'neutral'"
-          :variant="selected === s.id ? 'soft' : 'ghost'"
-          class="w-full justify-start"
-          @click="selected = s.id"
-        >
-          {{ s.title }}
-        </UButton>
-      </nav>
-      <UCard v-if="current">
-        <MarkdownBlock :source="current.content" />
-      </UCard>
-    </div>
-  </GameShell>
+  <div
+    v-if="!ready"
+    class="text-muted"
+  >
+    Sections will appear here once processing finishes.
+  </div>
+  <div
+    v-else-if="!sections?.length"
+    class="text-muted"
+  >
+    No sections found.
+  </div>
+  <div
+    v-else
+    class="grid md:grid-cols-[220px_1fr] gap-6"
+  >
+    <nav class="space-y-1">
+      <UButton
+        v-for="s in sections"
+        :key="s.id"
+        :color="selected === s.id ? 'primary' : 'neutral'"
+        :variant="selected === s.id ? 'soft' : 'ghost'"
+        class="w-full justify-start"
+        @click="selected = s.id"
+      >
+        {{ s.title }}
+      </UButton>
+    </nav>
+    <UCard v-if="current">
+      <MarkdownBlock :source="`# ${current.title}\n\n${current.content}`" />
+    </UCard>
+  </div>
 </template>
