@@ -48,6 +48,29 @@ const busy = computed(
   () => chat.status === 'submitted' || chat.status === 'streaming'
 )
 
+const toast = useToast()
+const clearing = ref(false)
+async function clearChat() {
+  if (clearing.value || !chat.messages.length) return
+  clearing.value = true
+  try {
+    await $fetch(`/api/games/${props.gameId}/messages`, { method: 'DELETE' })
+    chat.messages = []
+  } catch (err: unknown) {
+    const msg
+      = err && typeof err === 'object' && 'statusMessage' in err
+        ? String((err as { statusMessage: string }).statusMessage)
+        : String(err)
+    toast.add({
+      title: 'Could not clear chat',
+      description: msg,
+      color: 'error'
+    })
+  } finally {
+    clearing.value = false
+  }
+}
+
 function send() {
   const text = input.value.trim()
   if (!text || busy.value) return
@@ -116,13 +139,25 @@ const suggestions = [
             PDF
           </UButton>
         </div>
-        <UButton
-          icon="i-lucide-panel-right-close"
-          color="neutral"
-          variant="ghost"
-          aria-label="Close sidebar"
-          @click="open = false"
-        />
+        <div class="flex items-center gap-1">
+          <UButton
+            v-if="view === 'chat' && chat.messages.length"
+            icon="i-lucide-trash-2"
+            color="neutral"
+            variant="ghost"
+            size="xs"
+            :loading="clearing"
+            aria-label="Clear chat"
+            @click="clearChat"
+          />
+          <UButton
+            icon="i-lucide-panel-right-close"
+            color="neutral"
+            variant="ghost"
+            aria-label="Close sidebar"
+            @click="open = false"
+          />
+        </div>
       </div>
     </template>
 

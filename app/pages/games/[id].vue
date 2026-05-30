@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Game, IngestStep, ChatMessageRow } from '#shared/types'
+import type { Game, IngestStep, ChatMessageRow, Section } from '#shared/types'
 
 const route = useRoute()
 const toast = useToast()
@@ -11,6 +11,12 @@ const { data: game, refresh } = await useFetch<Game>(
 // Loaded once here (shell persists across tabs) and seeded into the chat sidebar.
 const { data: history } = await useFetch<ChatMessageRow[]>(
   () => `/api/games/${id.value}/messages`
+)
+// Sections power the collapsible "Overview" sub-tree in the aside nav.
+// Shared key so the Overview page reuses the same payload.
+const { data: sections } = await useFetch<Section[]>(
+  () => `/api/games/${id.value}/sections`,
+  { key: `sections-${route.params.id}` }
 )
 
 // Share the game with the tab pages
@@ -25,17 +31,61 @@ onMounted(() => {
 })
 onBeforeUnmount(() => clearInterval(timer))
 
-const tabs = computed(() => [
-  { label: 'Overview', icon: 'i-lucide-book-open', to: `/games/${id.value}` },
+const isActive = (to: string) => route.path === to
+const base = computed(() => `/games/${id.value}`)
+const onOverview = computed(() => route.path === base.value)
+
+// The active section on the Overview page is driven by ?section= (first by default).
+const activeSection = computed(() => {
+  if (!onOverview.value || !sections.value?.length) return null
+  const wanted = route.query.section as string | undefined
+  return sections.value.some(s => s.id === wanted)
+    ? wanted
+    : sections.value[0]!.id
+})
+
+const navItems = computed(() => [
+  {
+    label: 'Overview',
+    icon: 'i-lucide-book-open',
+    to: base.value,
+    active: onOverview.value,
+    defaultOpen: onOverview.value,
+    children: (sections.value ?? []).map(s => ({
+      label: s.title,
+      to: { path: base.value, query: { section: s.id } },
+      active: activeSection.value === s.id
+    }))
+  },
   {
     label: 'Setup',
     icon: 'i-lucide-list-checks',
-    to: `/games/${id.value}/setup`
+    to: `${base.value}/setup`,
+    active: isActive(`${base.value}/setup`)
   },
-  { label: 'Pieces', icon: 'i-lucide-puzzle', to: `/games/${id.value}/pieces` },
-  { label: 'PDF', icon: 'i-lucide-file-text', to: `/games/${id.value}/pdf` }
+  {
+    label: 'Pieces',
+    icon: 'i-lucide-puzzle',
+    to: `${base.value}/pieces`,
+    active: isActive(`${base.value}/pieces`)
+  },
+  {
+    label: 'PDF',
+    icon: 'i-lucide-file-text',
+    to: `${base.value}/pdf`,
+    active: isActive(`${base.value}/pdf`)
+  }
 ])
-const isActive = (to: string) => route.path === to
+
+// Mobile nav is a flat strip — drop the Overview sub-tree.
+const mobileNavItems = computed(() =>
+  navItems.value.map(item => ({
+    label: item.label,
+    icon: item.icon,
+    to: item.to,
+    active: item.active
+  }))
+)
 
 const stepUi: Record<
   IngestStep['status'],
@@ -73,7 +123,7 @@ const initialMessages = computed(() => history.value || [])
 </script>
 
 <template>
-  <UContainer class="py-6 space-y-6">
+  <UContainer class="py-6">
     <div
       v-if="!game"
       class="text-muted"
@@ -82,7 +132,8 @@ const initialMessages = computed(() => history.value || [])
     </div>
 
     <template v-else>
-      <div>
+      <!-- Prominent page header (full width, all breakpoints) -->
+      <div class="mb-6">
         <div class="flex items-center gap-2 text-sm text-muted mb-1">
           <NuxtLink
             to="/"
@@ -119,116 +170,113 @@ const initialMessages = computed(() => history.value || [])
         </div>
       </div>
 
-      <!-- Processing / failure panel -->
-      <UCard
-        v-if="game.status !== 'ready'"
-        :class="game.status === 'error' ? 'ring-1 ring-error/40' : ''"
-      >
-        <div class="flex items-center justify-between gap-4 mb-3">
-          <div class="flex items-center gap-2 font-medium">
-            <UIcon
-              v-if="game.status === 'processing'"
-              name="i-lucide-loader-circle"
-              class="animate-spin text-primary"
+      <UPage>
+        <!-- Left navigation aside (desktop) -->
+        <template #left>
+          <UPageAside>
+            <UNavigationMenu
+              :items="navItems"
+              orientation="vertical"
             />
-            <UIcon
-              v-else
-              name="i-lucide-triangle-alert"
-              class="text-error"
-            />
-            <span>{{
-              game.status === "processing"
-                ? "Processing rulebook…"
-                : "Processing failed"
-            }}</span>
-          </div>
-          <UButton
-            v-if="game.status === 'error'"
-            icon="i-lucide-rotate-cw"
-            :loading="reprocessing"
-            size="sm"
-            @click="retry"
-          >
-            Retry (resume)
-          </UButton>
-        </div>
-        <UProgress
-          v-if="game.status === 'processing'"
-          :model-value="game.progress"
-          class="mb-4"
+          </UPageAside>
+        </template>
+
+        <!-- Mobile navigation (hidden on desktop, where the aside takes over) -->
+        <UNavigationMenu
+          :items="mobileNavItems"
+          class="lg:hidden mb-6 overflow-x-auto"
         />
-        <ol
-          v-if="game.steps?.length"
-          class="space-y-2"
+
+        <!-- Processing / failure panel -->
+        <UCard
+          v-if="game.status !== 'ready'"
+          class="mb-6"
+          :class="game.status === 'error' ? 'ring-1 ring-error/40' : ''"
         >
-          <li
-            v-for="step in game.steps"
-            :key="step.key"
-            class="flex items-start gap-2 text-sm"
-          >
-            <UIcon
-              :name="stepUi[step.status].icon"
-              :class="[
-                stepUi[step.status].class,
-                stepUi[step.status].spin ? 'animate-spin' : '',
-                'mt-0.5 shrink-0'
-              ]"
-            />
-            <div class="min-w-0">
-              <span :class="step.status === 'pending' ? 'text-muted' : ''">{{
-                step.label
+          <div class="flex items-center justify-between gap-4 mb-3">
+            <div class="flex items-center gap-2 font-medium">
+              <UIcon
+                v-if="game.status === 'processing'"
+                name="i-lucide-loader-circle"
+                class="animate-spin text-primary"
+              />
+              <UIcon
+                v-else
+                name="i-lucide-triangle-alert"
+                class="text-error"
+              />
+              <span>{{
+                game.status === "processing"
+                  ? "Processing rulebook…"
+                  : "Processing failed"
               }}</span>
-              <span
-                v-if="step.detail"
-                :class="[
-                  'ml-2 text-xs',
-                  step.status === 'error' ? 'text-error' : 'text-muted'
-                ]"
-              >{{ step.detail }}</span>
             </div>
-          </li>
-        </ol>
-      </UCard>
-
-      <!-- Main content + persistent chat sidebar -->
-      <div class="flex flex-col lg:flex-row gap-6 items-start">
-        <div class="flex-1 min-w-0 w-full space-y-4">
-          <div
-            class="flex items-center justify-between gap-2 border-b border-default"
-          >
-            <div class="flex gap-1 overflow-x-auto">
-              <UButton
-                v-for="tab in tabs"
-                :key="tab.to"
-                :to="tab.to"
-                :icon="tab.icon"
-                :color="isActive(tab.to) ? 'primary' : 'neutral'"
-                :variant="isActive(tab.to) ? 'soft' : 'ghost'"
-                class="rounded-b-none shrink-0"
-              >
-                {{ tab.label }}
-              </UButton>
-            </div>
-          </div>
-
-          <GameChatSidebar
-            :game-id="id"
-            :ready="game.status === 'ready'"
-            :initial-messages="initialMessages"
-          >
             <UButton
-              icon="i-lucide-messages-square"
-              color="primary"
-              variant="soft"
-              class="fixed bottom-4 right-4"
+              v-if="game.status === 'error'"
+              icon="i-lucide-rotate-cw"
+              :loading="reprocessing"
+              size="sm"
+              @click="retry"
             >
-              Ask
+              Retry (resume)
             </UButton>
-          </GameChatSidebar>
+          </div>
+          <UProgress
+            v-if="game.status === 'processing'"
+            :model-value="game.progress"
+            class="mb-4"
+          />
+          <ol
+            v-if="game.steps?.length"
+            class="space-y-2"
+          >
+            <li
+              v-for="step in game.steps"
+              :key="step.key"
+              class="flex items-start gap-2 text-sm"
+            >
+              <UIcon
+                :name="stepUi[step.status].icon"
+                :class="[
+                  stepUi[step.status].class,
+                  stepUi[step.status].spin ? 'animate-spin' : '',
+                  'mt-0.5 shrink-0'
+                ]"
+              />
+              <div class="min-w-0">
+                <span :class="step.status === 'pending' ? 'text-muted' : ''">{{
+                  step.label
+                }}</span>
+                <span
+                  v-if="step.detail"
+                  :class="[
+                    'ml-2 text-xs',
+                    step.status === 'error' ? 'text-error' : 'text-muted'
+                  ]"
+                >{{ step.detail }}</span>
+              </div>
+            </li>
+          </ol>
+        </UCard>
 
-          <NuxtPage />
-        </div>
-      </div>
+        <!-- Page content + persistent chat sidebar -->
+        <GameChatSidebar
+          :game-id="id"
+          :ready="game.status === 'ready'"
+          :initial-messages="initialMessages"
+        >
+          <UButton
+            icon="i-lucide-messages-square"
+            color="primary"
+            variant="soft"
+            class="fixed bottom-4 right-4"
+          >
+            Ask
+          </UButton>
+        </GameChatSidebar>
+
+        <NuxtPage />
+      </UPage>
     </template>
   </UContainer>
 </template>

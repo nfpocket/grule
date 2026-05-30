@@ -1,4 +1,3 @@
-- [ ] Chat clearing
 - [ ] Resizable GameChatSidebar
 - [ ] i18n (German/English)
 - [ ] Translate-feature for the generated content

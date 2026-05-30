@@ -1,57 +1,46 @@
 <script setup lang="ts">
-import type { Section } from '#shared/types'
+import type { Section } from "#shared/types";
 
-const route = useRoute()
-const id = route.params.id as string
-const { ready } = useGameContext()
+const route = useRoute();
+const id = route.params.id as string;
+const { ready } = useGameContext();
 
-const { data: sections } = await useFetch<Section[]>(() => `/api/games/${id}/sections`)
-const selected = ref<string | null>(null)
+// Section navigation lives in the parent layout's aside; selection is driven by
+// the ?section= query param. Shared key reuses the aside's sections payload.
+const { data: sections } = await useFetch<Section[]>(
+  () => `/api/games/${id}/sections`,
+  { key: `sections-${id}` },
+);
 
-watchEffect(() => {
-  if (!sections.value?.length) return
-  const wanted = route.query.section as string | undefined
-  if (wanted && sections.value.some(s => s.id === wanted)) {
-    selected.value = wanted
-  } else if (!selected.value) {
-    selected.value = sections.value[0]!.id
-  }
-})
-
-const current = computed(() => sections.value?.find(s => s.id === selected.value) || null)
+const current = computed(() => {
+  if (!sections.value?.length) return null;
+  const wanted = route.query.section as string | undefined;
+  return sections.value.find((s) => s.id === wanted) ?? sections.value[0]!;
+});
 </script>
 
 <template>
-  <div
-    v-if="!ready"
-    class="text-muted"
-  >
+  <div v-if="!ready" class="text-muted">
     Sections will appear here once processing finishes.
   </div>
-  <div
-    v-else-if="!sections?.length"
-    class="text-muted"
-  >
-    No sections found.
-  </div>
-  <div
-    v-else
-    class="grid md:grid-cols-[220px_1fr] gap-6"
-  >
-    <nav class="space-y-1">
+  <div v-else-if="!sections?.length" class="text-muted">No sections found.</div>
+  <div v-else class="space-y-4">
+    <!-- Mobile section selector — on desktop the layout aside handles this. -->
+    <nav class="lg:hidden flex gap-1 overflow-x-auto pb-1">
       <UButton
         v-for="s in sections"
         :key="s.id"
-        :color="selected === s.id ? 'primary' : 'neutral'"
-        :variant="selected === s.id ? 'soft' : 'ghost'"
-        class="w-full justify-start"
-        @click="selected = s.id"
+        :to="{ query: { section: s.id } }"
+        :color="current?.id === s.id ? 'primary' : 'neutral'"
+        :variant="current?.id === s.id ? 'soft' : 'ghost'"
+        size="sm"
+        class="shrink-0"
       >
         {{ s.title }}
       </UButton>
     </nav>
     <UCard v-if="current">
-      <MarkdownBlock :source="`# ${current.title}\n\n${current.content}`" />
+      <MarkdownBlock :source="current.content" />
     </UCard>
   </div>
 </template>
