@@ -10,6 +10,12 @@ Markdown sections, and gives you:
 Single-user, local-first. Everything (uploaded PDFs, generated Markdown, the
 SQLite database with embeddings) lives under `./data`.
 
+## Showcase
+
+![Overview](./docs/images/overview.png)
+![Setup](./docs/images/setup.png)
+![Chat](./docs/images/chat.png)
+
 ## Tech stack
 
 - **Nuxt 4** + **Nuxt UI** (Tailwind v4)
