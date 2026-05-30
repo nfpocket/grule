@@ -15,6 +15,15 @@ export interface GameMeta {
   summary?: string
 }
 
+export type StepStatus = 'pending' | 'active' | 'done' | 'error'
+
+export interface IngestStep {
+  key: string
+  label: string
+  status: StepStatus
+  detail?: string
+}
+
 export interface Game {
   id: string
   title: string
@@ -29,6 +38,7 @@ export interface Game {
   chatProvider: string | null
   chatModel: string | null
   meta: GameMeta | null
+  steps: IngestStep[] | null
   createdAt: number
 }
 
@@ -61,8 +71,10 @@ export interface Piece {
 }
 
 export interface Citation {
-  sectionId: string
-  title: string
+  page?: number
+  // legacy section-based citations (older chat history)
+  sectionId?: string
+  title?: string
 }
 
 export interface ChatMessageRow {

@@ -4,8 +4,7 @@ import type { EmbeddingModel } from 'ai'
 export interface RetrievedChunk {
   chunkId: number
   content: string
-  sectionId: string
-  sectionTitle: string
+  page: number | null
   distance: number
 }
 
@@ -30,11 +29,9 @@ export function searchSimilar(
   const rows = db
     .prepare(
       `SELECT v.chunk_id AS chunkId, v.distance AS distance,
-              c.content AS content, c.section_id AS sectionId,
-              s.title AS sectionTitle
+              c.content AS content, c.page AS page
        FROM ${table} v
        JOIN chunks c ON c.id = v.chunk_id
-       JOIN sections s ON s.id = c.section_id
        WHERE v.game_id = ? AND v.embedding MATCH ? AND k = ?
        ORDER BY v.distance`
     )

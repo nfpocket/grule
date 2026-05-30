@@ -1,9 +1,10 @@
 import { randomUUID } from 'node:crypto'
-import { writeFile } from 'node:fs/promises'
+import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { generateObject } from 'ai'
 import { z } from 'zod'
 import { extractText, getDocumentProxy } from 'unpdf'
+import type { IngestStep, StepStatus } from '#shared/types'
 
 const splitSchema = z.object({
   game: z.object({
@@ -53,111 +54,181 @@ const piecesSchema = z.object({
 
 const MAX_TEXT = 240_000 // safety cap on characters fed to the model
 
-export async function runIngestion(gameId: string, pdfBytes: Uint8Array) {
+const STEP_DEFS: { key: string, label: string }[] = [
+  { key: 'extract', label: 'Extract text from PDF' },
+  { key: 'split', label: 'Split into sections' },
+  { key: 'embed', label: 'Index & embed content' },
+  { key: 'setup', label: 'Generate setup guide' },
+  { key: 'pieces', label: 'Catalogue game pieces' }
+]
+
+function counts(gameId: string) {
+  const db = getDb()
+  const n = (sql: string) => (db.prepare(sql).get(gameId) as { n: number }).n
+  return {
+    sections: n('SELECT COUNT(*) n FROM sections WHERE game_id = ?'),
+    chunks: n('SELECT COUNT(*) n FROM chunks WHERE game_id = ?'),
+    setup: n('SELECT COUNT(*) n FROM setup_steps WHERE game_id = ?'),
+    pieces: n('SELECT COUNT(*) n FROM pieces WHERE game_id = ?')
+  }
+}
+
+/**
+ * Runs (or resumes) the ingestion pipeline. Each stage is skipped when its
+ * output already exists, so a failed run — e.g. a provider rate-limit — can be
+ * retried and picks up where it left off. Progress is tracked as a structured
+ * step list on the game for full transparency in the UI.
+ */
+export async function runIngestion(gameId: string, pdfBytes?: Uint8Array) {
+  const steps: IngestStep[] = STEP_DEFS.map(s => ({ ...s, status: 'pending' as StepStatus }))
+  const db = getDb()
+
+  const persist = () => {
+    setGameSteps(gameId, steps)
+    const total = steps.length
+    const done = steps.filter(s => s.status === 'done').length
+    const active = steps.find(s => s.status === 'active')
+    const errored = steps.find(s => s.status === 'error')
+    updateGameProgress(gameId, {
+      progress: Math.round((done / total) * 100),
+      stage: errored ? `Failed: ${errored.label}` : active ? active.label : done === total ? 'Ready' : 'Queued'
+    })
+  }
+  const set = (key: string, status: StepStatus, detail?: string) => {
+    const st = steps.find(s => s.key === key)!
+    st.status = status
+    if (detail !== undefined) st.detail = detail
+    persist()
+  }
+  const isDone = (key: string) => steps.find(s => s.key === key)!.status === 'done'
+
+  // Mark already-completed stages as done (resume support)
+  const c = counts(gameId)
+  if (c.sections > 0) set('split', 'done', 'reused existing')
+  if (c.chunks > 0) set('embed', 'done', 'reused existing')
+  if (c.setup > 0) set('setup', 'done', 'reused existing')
+  if (c.pieces > 0) set('pieces', 'done', 'reused existing')
+  updateGameProgress(gameId, { status: 'processing', error: null })
+
   try {
     const settings = getSettings()
     const chat = activeChatModel()
-    const embModel = activeEmbeddingModel()
-    const db = getDb()
+    db.prepare('UPDATE games SET chat_provider = ?, chat_model = ? WHERE id = ?')
+      .run(settings.chat.provider, settings.chat.model, gameId)
 
-    db.prepare(
-      `UPDATE games SET chat_provider = ?, chat_model = ?, embedding_provider = ?, embedding_model = ?
-       WHERE id = ?`
-    ).run(settings.chat.provider, settings.chat.model, settings.embedding.provider, settings.embedding.model, gameId)
-
-    // 1. Extract text
-    updateGameProgress(gameId, { stage: 'Extracting text from PDF', progress: 10 })
-    const pdf = await getDocumentProxy(pdfBytes)
-    const { text } = await extractText(pdf, { mergePages: true })
-    const fullText = (Array.isArray(text) ? text.join('\n\n') : text).trim()
+    // 1. Extract per-page text (always runs; cheap and needed by later stages)
+    set('extract', 'active')
+    const bytes = pdfBytes ?? new Uint8Array(await readFile(join(gameDir(gameId), 'source.pdf')))
+    const pdf = await getDocumentProxy(bytes)
+    const { text } = await extractText(pdf, { mergePages: false })
+    const pages = (Array.isArray(text) ? text : [text]).map(t => (t || '').trim())
+    const fullText = pages.join('\n\n').trim()
     if (fullText.length < 100) {
       throw new Error('Could not extract text from this PDF. It may be a scanned/image-only document.')
     }
+    set('extract', 'done', `${pages.length} page${pages.length === 1 ? '' : 's'}`)
+
     const corpus = fullText.slice(0, MAX_TEXT)
 
-    // 2. Split into sections + extract metadata
-    updateGameProgress(gameId, { stage: 'Analyzing & splitting the rulebook', progress: 30 })
-    const { object: split } = await generateObject({
-      model: chat,
-      schema: splitSchema,
-      maxOutputTokens: 16000,
-      system:
-        'You are an expert at structuring board game rulebooks. Split the rulebook into logical, '
-        + 'self-contained sections (overview, setup, gameplay/turn structure, specific rules, scoring, '
-        + 'end of game, components, FAQ, etc.). Preserve all rules content faithfully and format each '
-        + 'section as clean markdown. Do not invent rules.',
-      prompt: `Rulebook text:\n\n${corpus}`
-    })
+    // 2. Split into sections + metadata (for the reader)
+    if (!isDone('split')) {
+      set('split', 'active')
+      const { object: split } = await generateObject({
+        model: chat,
+        schema: splitSchema,
+        maxOutputTokens: 16000,
+        system:
+          'You are an expert at structuring board game rulebooks. Split the rulebook into logical, '
+          + 'self-contained sections (overview, setup, gameplay/turn structure, specific rules, scoring, '
+          + 'end of game, components, FAQ, etc.). Preserve all rules content faithfully and format each '
+          + 'section as clean markdown. Do not invent rules.',
+        prompt: `Rulebook text:\n\n${corpus}`
+      })
 
-    // 3. Persist sections + write markdown files
-    updateGameProgress(gameId, { stage: 'Writing section files', progress: 45 })
-    db.prepare('UPDATE games SET title = ?, meta = ? WHERE id = ?').run(
-      split.game.title,
-      JSON.stringify({
-        players: split.game.players,
-        playtime: split.game.playtime,
-        ages: split.game.ages,
-        summary: split.game.summary
-      }),
-      gameId
-    )
-
-    const insertSection = db.prepare(
-      'INSERT INTO sections (id, game_id, ord, filename, title, content) VALUES (?, ?, ?, ?, ?, ?)'
-    )
-    const sectionRecords: { id: string, title: string, content: string }[] = []
-    for (let i = 0; i < split.sections.length; i++) {
-      const s = split.sections[i]!
-      const id = randomUUID()
-      const filename = `${String(i + 1).padStart(2, '0')}-${slugify(s.slug || s.title)}.md`
-      insertSection.run(id, gameId, i, filename, s.title, s.markdown)
-      await writeFile(join(gameDir(gameId), 'sections', filename), `# ${s.title}\n\n${s.markdown}\n`, 'utf8')
-      sectionRecords.push({ id, title: s.title, content: s.markdown })
+      db.prepare('UPDATE games SET title = ?, meta = ? WHERE id = ?').run(
+        split.game.title,
+        JSON.stringify({
+          players: split.game.players,
+          playtime: split.game.playtime,
+          ages: split.game.ages,
+          summary: split.game.summary
+        }),
+        gameId
+      )
+      const insertSection = db.prepare(
+        'INSERT INTO sections (id, game_id, ord, filename, title, content) VALUES (?, ?, ?, ?, ?, ?)'
+      )
+      db.prepare('DELETE FROM sections WHERE game_id = ?').run(gameId)
+      for (let i = 0; i < split.sections.length; i++) {
+        const s = split.sections[i]!
+        const id = randomUUID()
+        const filename = `${String(i + 1).padStart(2, '0')}-${slugify(s.slug || s.title)}.md`
+        insertSection.run(id, gameId, i, filename, s.title, s.markdown)
+        await writeFile(join(gameDir(gameId), 'sections', filename), `# ${s.title}\n\n${s.markdown}\n`, 'utf8')
+      }
+      set('split', 'done', `${split.sections.length} sections`)
     }
 
-    // 4. Chunk
-    updateGameProgress(gameId, { stage: 'Chunking content', progress: 55 })
-    const allChunks: { sectionId: string, ord: number, content: string }[] = []
-    for (const sec of sectionRecords) {
-      for (const c of chunkMarkdown(`# ${sec.title}\n\n${sec.content}`)) {
-        allChunks.push({ sectionId: sec.id, ord: c.ord, content: c.content })
-      }
+    // 3. Chunk the raw per-page text (keeps page numbers) + embed for RAG
+    if (!isDone('embed')) {
+      set('embed', 'active')
+      const embModel = activeEmbeddingModel()
+      const allChunks: { page: number, ord: number, content: string }[] = []
+      pages.forEach((pageText, idx) => {
+        if (!pageText) return
+        for (const ch of chunkMarkdown(pageText)) {
+          allChunks.push({ page: idx + 1, ord: ch.ord, content: ch.content })
+        }
+      })
+      if (!allChunks.length) throw new Error('No text chunks to embed.')
+
+      const embeddings = await embedTexts(embModel, allChunks.map(ch => ch.content))
+      const dim = embeddings[0]?.length ?? 0
+      if (!dim) throw new Error('Embedding model returned no vectors.')
+      const table = ensureVecTable(dim)
+      db.prepare('UPDATE games SET embedding_provider = ?, embedding_model = ?, embedding_dim = ? WHERE id = ?')
+        .run(settings.embedding.provider, settings.embedding.model, dim, gameId)
+
+      const insertChunk = db.prepare('INSERT INTO chunks (game_id, page, ord, content) VALUES (?, ?, ?, ?)')
+      const insertVec = db.prepare(`INSERT INTO ${table} (chunk_id, game_id, embedding) VALUES (?, ?, ?)`)
+      const store = db.transaction(() => {
+        db.prepare('DELETE FROM chunks WHERE game_id = ?').run(gameId)
+        db.prepare(`DELETE FROM ${table} WHERE game_id = ?`).run(gameId)
+        for (let i = 0; i < allChunks.length; i++) {
+          const ch = allChunks[i]!
+          const res = insertChunk.run(gameId, ch.page, ch.ord, ch.content)
+          // sqlite-vec needs an INTEGER-typed primary key; better-sqlite3 binds plain
+          // JS numbers as FLOAT, so the rowid must be passed as a BigInt.
+          insertVec.run(BigInt(res.lastInsertRowid), gameId, floatsToBlob(embeddings[i]!))
+        }
+      })
+      store()
+      set('embed', 'done', `${allChunks.length} chunks`)
     }
 
-    // 5. Embed + store vectors
-    updateGameProgress(gameId, { stage: `Embedding ${allChunks.length} chunks`, progress: 65 })
-    const embeddings = await embedTexts(embModel, allChunks.map(c => c.content))
-    const dim = embeddings[0]?.length ?? 0
-    if (!dim) throw new Error('Embedding model returned no vectors.')
-    const table = ensureVecTable(dim)
-    db.prepare('UPDATE games SET embedding_dim = ? WHERE id = ?').run(dim, gameId)
+    // 4. Setup guide
+    if (!isDone('setup')) {
+      set('setup', 'active')
+      await generateSetup(gameId, chat)
+      set('setup', 'done')
+    }
 
-    const insertChunk = db.prepare('INSERT INTO chunks (game_id, section_id, ord, content) VALUES (?, ?, ?, ?)')
-    const insertVec = db.prepare(`INSERT INTO ${table} (chunk_id, game_id, embedding) VALUES (?, ?, ?)`)
-    const storeChunks = db.transaction(() => {
-      for (let i = 0; i < allChunks.length; i++) {
-        const c = allChunks[i]!
-        const res = insertChunk.run(gameId, c.sectionId, c.ord, c.content)
-        // sqlite-vec requires an INTEGER-typed primary key; better-sqlite3 binds plain JS
-        // numbers as FLOAT, so the rowid must be passed as a BigInt.
-        insertVec.run(BigInt(res.lastInsertRowid), gameId, floatsToBlob(embeddings[i]!))
-      }
-    })
-    storeChunks()
+    // 5. Game pieces
+    if (!isDone('pieces')) {
+      set('pieces', 'active')
+      await generatePieces(gameId, chat)
+      set('pieces', 'done')
+    }
 
-    const groundingText = sectionRecords.map(s => `## ${s.title}\n${s.content}`).join('\n\n').slice(0, MAX_TEXT)
-
-    // 6. Setup guide
-    updateGameProgress(gameId, { stage: 'Generating setup guide', progress: 80 })
-    await generateSetup(gameId, chat, groundingText)
-
-    // 7. Game pieces
-    updateGameProgress(gameId, { stage: 'Cataloguing game pieces', progress: 92 })
-    await generatePieces(gameId, chat, groundingText)
-
-    updateGameProgress(gameId, { stage: 'Ready', progress: 100, status: 'ready', error: null })
+    updateGameProgress(gameId, { status: 'ready', progress: 100, stage: 'Ready', error: null })
   } catch (err) {
     console.error('[ingest] failed for', gameId, err)
+    const active = steps.find(s => s.status === 'active')
+    if (active) {
+      active.status = 'error'
+      active.detail = describeError(err)
+    }
+    setGameSteps(gameId, steps)
     updateGameProgress(gameId, { status: 'error', error: describeError(err) })
   }
 }
@@ -165,7 +236,7 @@ export async function runIngestion(gameId: string, pdfBytes: Uint8Array) {
 /** Extract a useful message from AI SDK errors (which hide the real cause in responseBody). */
 function describeError(err: unknown): string {
   if (err && typeof err === 'object') {
-    const e = err as { message?: string, responseBody?: string, statusCode?: number }
+    const e = err as { message?: string, responseBody?: string }
     const parts: string[] = []
     if (e.message) parts.push(e.message)
     if (e.responseBody) parts.push(e.responseBody)
@@ -174,9 +245,8 @@ function describeError(err: unknown): string {
   return err instanceof Error ? err.message : String(err)
 }
 
-export async function generateSetup(gameId: string, model = activeChatModel(), grounding?: string) {
+export async function generateSetup(gameId: string, model = activeChatModel()) {
   const db = getDb()
-  const context = grounding ?? sectionsText(gameId)
   const { object } = await generateObject({
     model,
     schema: setupSchema,
@@ -184,7 +254,7 @@ export async function generateSetup(gameId: string, model = activeChatModel(), g
     system:
       'You build clear, ordered, step-by-step initial setup guides for board games. Base every step '
       + 'strictly on the rulebook. Be concrete about quantities and placement. Do not invent rules.',
-    prompt: `Rulebook sections:\n\n${context}\n\nProduce the initial game setup as ordered steps.`
+    prompt: `Rulebook sections:\n\n${sectionsText(gameId)}\n\nProduce the initial game setup as ordered steps.`
   })
   const insert = db.prepare(
     'INSERT INTO setup_steps (game_id, step_no, title, body, section_ref) VALUES (?, ?, ?, ?, ?)'
@@ -196,9 +266,8 @@ export async function generateSetup(gameId: string, model = activeChatModel(), g
   tx()
 }
 
-export async function generatePieces(gameId: string, model = activeChatModel(), grounding?: string) {
+export async function generatePieces(gameId: string, model = activeChatModel()) {
   const db = getDb()
-  const context = grounding ?? sectionsText(gameId)
   const { object } = await generateObject({
     model,
     schema: piecesSchema,
@@ -206,7 +275,7 @@ export async function generatePieces(gameId: string, model = activeChatModel(), 
     system:
       'You catalogue every physical component of a board game and explain its purpose. Base everything '
       + 'strictly on the rulebook. Do not invent components.',
-    prompt: `Rulebook sections:\n\n${context}\n\nList and explain every game piece/component.`
+    prompt: `Rulebook sections:\n\n${sectionsText(gameId)}\n\nList and explain every game piece/component.`
   })
   const insert = db.prepare(
     'INSERT INTO pieces (game_id, name, category, quantity, description, section_ref) VALUES (?, ?, ?, ?, ?, ?)'

@@ -120,15 +120,15 @@ const suggestions = [
               class="mt-2 flex flex-wrap gap-1"
             >
               <UButton
-                v-for="c in citationsOf(message)"
-                :key="c.sectionId"
-                :to="`/games/${id}?section=${c.sectionId}`"
+                v-for="(c, i) in citationsOf(message)"
+                :key="i"
+                :to="c.page ? `/games/${id}/pdf?page=${c.page}` : `/games/${id}?section=${c.sectionId}`"
                 size="xs"
                 variant="outline"
                 color="neutral"
-                icon="i-lucide-book-marked"
+                :icon="c.page ? 'i-lucide-file-text' : 'i-lucide-book-marked'"
               >
-                {{ c.title }}
+                {{ c.page ? `Page ${c.page}` : c.title }}
               </UButton>
             </div>
           </div>

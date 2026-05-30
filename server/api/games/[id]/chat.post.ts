@@ -41,12 +41,12 @@ export default defineEventHandler(async (event) => {
     const queryVec = await embedText(emb, query)
     const hits = searchSimilar(id, game.embeddingDim, queryVec, 6)
     if (hits.length) {
-      context = hits.map((h, i) => `[${i + 1}] Section: ${h.sectionTitle}\n${h.content}`).join('\n\n')
-      const seen = new Set<string>()
+      context = hits.map((h, i) => `[${i + 1}] (page ${h.page ?? '?'})\n${h.content}`).join('\n\n')
+      const seen = new Set<number>()
       for (const h of hits) {
-        if (!seen.has(h.sectionId)) {
-          seen.add(h.sectionId)
-          citations.push({ sectionId: h.sectionId, title: h.sectionTitle })
+        if (h.page != null && !seen.has(h.page)) {
+          seen.add(h.page)
+          citations.push({ page: h.page })
         }
       }
     }
@@ -61,7 +61,7 @@ export default defineEventHandler(async (event) => {
   const system = `You are a rules expert for the board game "${game.title}". `
     + 'Answer the player\'s question using ONLY the rulebook context below. '
     + 'If the answer is not contained in the context, clearly say you could not find it in the rulebook '
-    + 'rather than guessing. Reference the relevant section titles in your answer. Be concise and precise.\n\n'
+    + 'rather than guessing. Reference the relevant page numbers in your answer. Be concise and precise.\n\n'
     + `--- RULEBOOK CONTEXT ---\n${context}\n--- END CONTEXT ---`
 
   const modelMessages = await convertToModelMessages(messages)

@@ -54,6 +54,7 @@ function migrate(db: Database.Database) {
       chat_provider TEXT,
       chat_model TEXT,
       meta TEXT,
+      steps TEXT,
       created_at INTEGER NOT NULL
     );
 
@@ -70,7 +71,8 @@ function migrate(db: Database.Database) {
     CREATE TABLE IF NOT EXISTS chunks (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       game_id TEXT NOT NULL REFERENCES games(id) ON DELETE CASCADE,
-      section_id TEXT NOT NULL,
+      section_id TEXT,
+      page INTEGER,
       ord INTEGER NOT NULL,
       content TEXT NOT NULL
     );
@@ -107,6 +109,41 @@ function migrate(db: Database.Database) {
     );
     CREATE INDEX IF NOT EXISTS idx_chat_game ON chat_messages(game_id);
   `)
+
+  // Lightweight migrations for databases created before these changes.
+  rebuildChunksIfLegacy(db)
+  addColumnIfMissing(db, 'games', 'steps', 'TEXT')
+  addColumnIfMissing(db, 'chunks', 'page', 'INTEGER')
+}
+
+// Older schemas had `chunks.section_id NOT NULL`; the page-based pipeline inserts
+// chunks without a section, so relax that constraint (and add `page`) by rebuilding.
+function rebuildChunksIfLegacy(db: Database.Database) {
+  const cols = db.prepare('PRAGMA table_info(chunks)').all() as { name: string, notnull: number }[]
+  const sid = cols.find(c => c.name === 'section_id')
+  if (!sid || sid.notnull === 0) return
+  db.exec(`
+    CREATE TABLE chunks_new (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      game_id TEXT NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+      section_id TEXT,
+      page INTEGER,
+      ord INTEGER NOT NULL,
+      content TEXT NOT NULL
+    );
+    INSERT INTO chunks_new (id, game_id, section_id, ord, content)
+      SELECT id, game_id, section_id, ord, content FROM chunks;
+    DROP TABLE chunks;
+    ALTER TABLE chunks_new RENAME TO chunks;
+    CREATE INDEX IF NOT EXISTS idx_chunks_game ON chunks(game_id);
+  `)
+}
+
+function addColumnIfMissing(db: Database.Database, table: string, column: string, type: string) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]
+  if (!cols.some(c => c.name === column)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${type}`)
+  }
 }
 
 const _vecTables = new Set<string>()

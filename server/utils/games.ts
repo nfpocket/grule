@@ -1,5 +1,5 @@
 import { rm } from 'node:fs/promises'
-import type { Game, GameMeta } from '#shared/types'
+import type { Game, GameMeta, IngestStep } from '#shared/types'
 
 interface GameRow {
   id: string
@@ -15,6 +15,7 @@ interface GameRow {
   chat_provider: string | null
   chat_model: string | null
   meta: string | null
+  steps: string | null
   created_at: number
 }
 
@@ -33,8 +34,13 @@ export function mapGame(row: GameRow): Game {
     chatProvider: row.chat_provider,
     chatModel: row.chat_model,
     meta: row.meta ? (JSON.parse(row.meta) as GameMeta) : null,
+    steps: row.steps ? (JSON.parse(row.steps) as IngestStep[]) : null,
     createdAt: row.created_at
   }
+}
+
+export function setGameSteps(gameId: string, steps: IngestStep[]) {
+  getDb().prepare('UPDATE games SET steps = ? WHERE id = ?').run(JSON.stringify(steps), gameId)
 }
 
 export function getGame(id: string): Game | null {

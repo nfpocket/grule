@@ -106,12 +106,29 @@ model (for RAG search).
 ## How it works
 
 1. **Upload** (`POST /api/games`) saves the PDF and kicks off background ingestion.
-2. **Ingestion** (`server/utils/ingest.ts`): extract text → AI splits it into
-   Markdown sections → chunk → embed (`embedMany`) into a per-dimension
-   `sqlite-vec` table → pre-generate the setup guide and pieces list
-   (`generateObject`). Live progress is polled via `GET /api/games/:id`.
+2. **Ingestion** (`server/utils/ingest.ts`) runs as resumable stages — extract →
+   split → embed → setup → pieces:
+   - Extracts text **per page** so chunks keep their source page number.
+   - AI splits the rulebook into Markdown sections (for the reader).
+   - Chunks the raw per-page text and embeds it (`embedMany`) into a
+     per-dimension `sqlite-vec` table.
+   - Pre-generates the setup guide and pieces list (`generateObject`).
+   - Each stage is recorded in a structured **step log** on the game and shown
+     live in the UI. Progress is polled via `GET /api/games/:id`.
 3. **Chat** (`POST /api/games/:id/chat`): embeds the question, vector-searches
-   the game's chunks, and streams a grounded, cited answer. History is persisted.
+   the game's chunks, and streams a grounded answer that **cites page numbers**.
+   History is persisted; citation chips link into the PDF viewer at that page.
+
+### Viewing the PDF
+The original upload is served at `GET /api/games/:id/pdf` and embedded in the
+**PDF** tab. Chat citations link to `…/pdf?page=N`, which jumps the viewer to
+that page.
+
+### Resuming a failed run
+If ingestion fails partway (e.g. a provider rate-limit), the game shows the
+failed step and a **Retry** button (`POST /api/games/:id/reprocess`). Reprocessing
+**skips stages whose output already exists**, so it continues from where it left
+off instead of redoing the expensive split/embed work.
 
 Each game records the embedding model used at ingestion, so changing the
 embedding provider later only affects newly uploaded games.
