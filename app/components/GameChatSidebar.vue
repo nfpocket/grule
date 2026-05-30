@@ -84,7 +84,14 @@ const suggestions = [
 </script>
 
 <template>
-  <USlideover v-model:open="open" :overlay="false" :modal="false">
+  <USlideover
+    :ui="{
+      content: 'lg:w-[33vw] lg:min-w-[500px] max-w-none',
+    }"
+    v-model:open="open"
+    :overlay="false"
+    :modal="false"
+  >
     <slot></slot>
 
     <template #header>
