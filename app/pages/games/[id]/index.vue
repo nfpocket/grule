@@ -51,7 +51,7 @@ const current = computed(() => sections.value?.find(s => s.id === selected.value
         </UButton>
       </nav>
       <UCard v-if="current">
-        <MarkdownBlock :source="`# ${current.title}\n\n${current.content}`" />
+        <MarkdownBlock :source="current.content" />
       </UCard>
     </div>
   </GameShell>
