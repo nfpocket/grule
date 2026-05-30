@@ -116,19 +116,25 @@ export async function runIngestion(gameId: string, pdfBytes?: Uint8Array) {
     db.prepare('UPDATE games SET chat_provider = ?, chat_model = ? WHERE id = ?')
       .run(settings.chat.provider, settings.chat.model, gameId)
 
-    // 1. Extract per-page text (always runs; cheap and needed by later stages)
-    set('extract', 'active')
-    const bytes = pdfBytes ?? new Uint8Array(await readFile(join(gameDir(gameId), 'source.pdf')))
-    const pdf = await getDocumentProxy(bytes)
-    const { text } = await extractText(pdf, { mergePages: false })
-    const pages = (Array.isArray(text) ? text : [text]).map(t => (t || '').trim())
-    const fullText = pages.join('\n\n').trim()
-    if (fullText.length < 100) {
-      throw new Error('Could not extract text from this PDF. It may be a scanned/image-only document.')
+    // 1. Extract per-page text — only when a stage that consumes it (split/embed)
+    // still needs to run. On a setup/pieces-only retry we skip the PDF parse entirely.
+    let pages: string[] = []
+    let corpus = ''
+    if (!isDone('split') || !isDone('embed')) {
+      set('extract', 'active')
+      const bytes = pdfBytes ?? new Uint8Array(await readFile(join(gameDir(gameId), 'source.pdf')))
+      const pdf = await getDocumentProxy(bytes)
+      const { text } = await extractText(pdf, { mergePages: false })
+      pages = (Array.isArray(text) ? text : [text]).map(t => (t || '').trim())
+      const fullText = pages.join('\n\n').trim()
+      if (fullText.length < 100) {
+        throw new Error('Could not extract text from this PDF. It may be a scanned/image-only document.')
+      }
+      corpus = fullText.slice(0, MAX_TEXT)
+      set('extract', 'done', `${pages.length} page${pages.length === 1 ? '' : 's'}`)
+    } else {
+      set('extract', 'done', 'reused existing')
     }
-    set('extract', 'done', `${pages.length} page${pages.length === 1 ? '' : 's'}`)
-
-    const corpus = fullText.slice(0, MAX_TEXT)
 
     // 2. Split into sections + metadata (for the reader)
     if (!isDone('split')) {
