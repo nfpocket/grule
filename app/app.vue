@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { en, de } from '@nuxt/ui/locale'
 
+type Locale = "en" | "de"
+
 const { t, locale, setLocale } = useI18n()
 
 useHead({
@@ -52,7 +54,7 @@ useSeoMeta({
           variant="ghost"
           color="neutral"
           class="w-36"
-          @update:model-value="setLocale($event)"
+          @update:model-value="setLocale($event as Locale)"
         />
         <UColorModeButton />
       </template>

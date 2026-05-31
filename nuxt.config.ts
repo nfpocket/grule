@@ -48,6 +48,7 @@ export default defineNuxtConfig({
       { code: 'de', name: 'Deutsch', language: 'de-DE', file: 'de.json' }
     ],
     bundle: {
+      // @ts-expect-error - optimizeTranslationDirective is not yet in the types, but it is in the code and we want to set it to false
       optimizeTranslationDirective: false
     },
     detectBrowserLanguage: {
