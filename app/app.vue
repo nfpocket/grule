@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { en, de } from '@nuxt/ui/locale'
 
-type Locale = "en" | "de"
+type Locale = 'en' | 'de'
 
 const { t, locale, setLocale } = useI18n()
 
